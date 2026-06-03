@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Studio — Developer CV Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --accent:#0e7c66;
+    --ink:#15201d;
+    --muted:#5d6b66;
+    --line:#e4e9e7;
+    --bg:#f3f1ec;
+    --panel:#ffffff;
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'IBM Plex Mono','SFMono-Regular',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(900px 500px at 88% -10%, rgba(14,124,102,.08), transparent 60%),
+      radial-gradient(700px 500px at -5% 110%, rgba(14,124,102,.06), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:14px 22px;
+    background:rgba(255,255,255,.82);
+    backdrop-filter:saturate(160%) blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;}
+  .brand b{font-family:var(--serif);font-weight:600;font-size:21px;letter-spacing:-.02em;}
+  .brand span{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);}
+  .ctrl{display:flex;align-items:center;gap:10px;}
+  .swatches{display:flex;gap:7px;}
+  .swatch{width:22px;height:22px;border-radius:50%;border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 1px var(--line);transition:transform .12s;}
+  .swatch:hover{transform:scale(1.12);}
+  .swatch.active{box-shadow:0 0 0 2px var(--ink);}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;}
+  .seg button{border:0;background:transparent;padding:7px 14px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;cursor:pointer;color:var(--muted);}
+  .seg button.on{background:var(--ink);color:#fff;}
+  .btn{
+    border:0;border-radius:10px;padding:10px 16px;cursor:pointer;
+    font-family:var(--sans);font-weight:600;font-size:13.5px;
+    display:inline-flex;align-items:center;gap:8px;transition:transform .1s, filter .15s;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 6px 18px -6px var(--accent);}
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
+  .btn-ghost:hover{border-color:#c8d1ce;}
+
+  /* ---------- Layout ---------- */
+  .stage{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:0;height:calc(100vh - 63px);transition:grid-template-columns .22s ease;}
+  .form{overflow-y:auto;padding:26px 24px 80px;border-right:1px solid var(--line);transition:border-color .22s;}
+  .preview{overflow:auto;padding:36px;display:flex;justify-content:center;align-items:flex-start;background:
+    linear-gradient(0deg, rgba(0,0,0,.015), rgba(0,0,0,.015)),
+    repeating-linear-gradient(45deg, transparent, transparent 11px, rgba(0,0,0,.012) 11px, rgba(0,0,0,.012) 12px);
+    transition:opacity .18s;}
+  .stage.preview-hidden{grid-template-columns:1fr 0;}
+  .stage.preview-hidden .preview{opacity:0;pointer-events:none;overflow:hidden;padding:0;}
+  .stage.preview-hidden .form{border-right:none;}
+  @media (max-width:980px){
+    .stage{grid-template-columns:1fr;height:auto;}
+    .form{border-right:0;border-bottom:1px solid var(--line);height:auto;}
+    .preview{padding:18px;}
+  }
+
+  /* ---------- Form ---------- */
+  .group{margin-bottom:22px;}
+  .group>h3{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px;display:flex;align-items:center;gap:9px;
+  }
+  .group>h3::after{content:"";flex:1;height:1px;background:var(--line);}
+  label.fld{display:block;margin-bottom:11px;}
+  label.fld .lab{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px;letter-spacing:.01em;}
+  input[type=text],input[type=email],textarea,select{
+    width:100%;border:1px solid var(--line);border-radius:9px;background:#fff;
+    padding:9px 11px;font-family:var(--sans);font-size:13.5px;color:var(--ink);resize:vertical;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus,textarea:focus,select:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-alpha);}
+  textarea{min-height:62px;line-height:1.5;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .hint{font-size:11px;color:var(--muted);margin:-4px 0 10px;}
+  .card{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:11px;background:#fcfcfb;position:relative;}
+  .card .del{position:absolute;top:9px;right:9px;border:0;background:#fff;border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;}
+  .card .del:hover{color:#c0392b;border-color:#f0c9c4;}
+  .addbtn{width:100%;border:1px dashed #c4cecb;background:#fff;border-radius:10px;padding:9px;color:var(--accent);font-family:var(--sans);font-weight:600;font-size:12.5px;cursor:pointer;}
+  .addbtn:hover{background:var(--accent-subtle);}
+
+  /* photo upload */
+  .photo-up{display:flex;align-items:center;gap:14px;}
+  .photo-prev{width:66px;height:66px;border-radius:14px;object-fit:cover;border:1px solid var(--line);background:#eef1f0;flex:none;}
+  .photo-prev.empty{display:flex;align-items:center;justify-content:center;color:#aeb8b4;font-size:11px;font-family:var(--mono);text-align:center;}
+  .file-lab{font-size:12px;}
+  .file-lab input{display:none;}
+  .file-lab .pick{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:12px;}
+  .file-lab .pick:hover{border-color:var(--accent);color:var(--accent);}
+  .clearphoto{font-size:11px;color:var(--muted);background:none;border:0;cursor:pointer;text-decoration:underline;margin-top:6px;display:block;}
+
+  /* ---------- A4 Resume ---------- */
+  .sheet-wrap{transform-origin:top center;}
+  #resume{
+    width:794px;min-height:1123px;background:#fff;
+    box-shadow:0 30px 70px -30px rgba(20,32,29,.35),0 2px 8px rgba(0,0,0,.06);
+    display:grid;grid-template-columns:262px 1fr;overflow:hidden;color:var(--ink);
+    font-kerning:none;word-spacing:0.03em;
+  }
+  #resume .side{background:linear-gradient(180deg,#fafbfa,#f4f6f5);padding:34px 26px;border-right:1px solid #eceeed;}
+  #resume .main{padding:36px 38px 40px;}
+  #resume .r-photo{width:128px;height:128px;border-radius:18px;object-fit:cover;display:block;margin:0 auto 20px;border:3px solid #fff;box-shadow:0 8px 22px -10px rgba(0,0,0,.4);}
+  #resume .r-photo.empty{background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--serif);font-size:46px;font-weight:600;}
+
+  #resume .s-block{margin-bottom:22px;}
+  #resume .s-title{font-family:var(--sans);font-size:10px;letter-spacing:.16em;font-weight:700;text-transform:uppercase;color:var(--accent);margin:0 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--accent-fade);}
+  #resume .contact-li{display:flex;gap:8px;font-size:11.5px;color:#39443f;margin-bottom:7px;line-height:1.35;word-break:break-word;}
+  #resume .contact-li b{color:var(--accent);font-family:var(--sans);font-size:15px;letter-spacing:0;flex:none;width:20px;text-align:center;line-height:1;}
+  #resume a{color:inherit;text-decoration:none;}
+
+  #resume .skillcat{margin-bottom:11px;}
+  #resume .skillcat .cn{font-size:11px;font-weight:700;color:#2c3a35;margin-bottom:5px;}
+  #resume .tags{display:flex;flex-wrap:wrap;gap:5px;}
+  #resume .tag{font-family:var(--mono);font-size:9.5px;background:#fff;border:1px solid #dde3e1;border-radius:6px;padding:3px 7px;color:#34423d;}
+
+  #resume .lang-li{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;}
+  #resume .lang-li span:last-child{color:var(--muted);font-family:var(--mono);font-size:10px;}
+
+  #resume .name{font-family:var(--serif);font-weight:600;font-size:40px;line-height:1.02;letter-spacing:0;margin:0 0 6px;}
+  #resume .role{font-size:14.5px;font-weight:600;color:var(--accent);letter-spacing:0;margin:0 0 4px;}
+  #resume .role-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.02em;margin-bottom:20px;}
+  #resume .summary{font-size:12.5px;line-height:1.6;color:#384540;margin:0 0 8px;}
+
+  #resume .exp{margin-bottom:17px;}
+  #resume .exp-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  #resume .exp-role{font-size:14px;font-weight:700;color:#1c2a25;}
+  #resume .exp-date{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;flex:none;}
+  #resume .exp-co{font-size:12px;font-weight:600;color:var(--accent);margin:1px 0 6px;}
+  #resume .exp-co .loc{color:var(--muted);font-weight:500;}
+  #resume ul.bullets{margin:0;padding-left:16px;}
+  #resume ul.bullets li{font-size:11.8px;line-height:1.5;color:#3a463f;margin-bottom:3px;}
+
+  #resume .proj{margin-bottom:13px;}
+  #resume .proj-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  #resume .proj-n{font-size:12.5px;font-weight:700;color:#1c2a25;}
+  #resume .proj-link{font-family:var(--mono);font-size:9.5px;color:var(--accent);}
+  #resume .proj-d{font-size:11.5px;line-height:1.5;color:#3a463f;margin:2px 0 3px;}
+  #resume .proj-tech{font-family:var(--mono);font-size:9.5px;color:var(--muted);}
+
+  #resume .edu{margin-bottom:11px;}
+  #resume .edu-d{font-size:12.5px;font-weight:700;color:#1c2a25;}
+  #resume .edu-s{font-size:11.5px;color:var(--accent);font-weight:600;}
+  #resume .edu-y{font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;font-weight:500;transition:all .25s;z-index:99;pointer-events:none;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  ::-webkit-scrollbar{width:11px;height:11px;}
+  ::-webkit-scrollbar-thumb{background:#cfd6d3;border-radius:8px;border:3px solid var(--bg);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><b>Resume Studio</b><span>dev cv generator</span></div>
+  <div class="ctrl">
+    <div class="swatches" id="swatches"></div>
+  </div>
+  <div class="ctrl">
+    <div class="seg" id="langSeg">
+      <button data-lang="en" class="on">EN</button>
+      <button data-lang="fr">FR</button>
+    </div>
+  </div>
+  <div class="ctrl">
+    <button class="btn btn-ghost" id="previewToggleBtn" onclick="togglePreview()" title="Toggle preview pane">
+      <svg id="previewToggleIcon" width="16" height="12" viewBox="0 0 16 12" fill="currentColor" aria-hidden="true">
+        <rect x="0" y="0" width="6" height="12" rx="1.5" opacity=".55"/>
+        <rect x="8" y="0" width="8" height="12" rx="1.5"/>
+      </svg>
+      <span id="previewToggleLabel">Hide preview</span>
+    </button>
+  </div>
+  <div class="ctrl">
+    <button class="btn btn-ghost" onclick="exportJSON()" title="Save your data as a file">Save data</button>
+    <label class="btn btn-ghost" style="margin:0;" title="Load previously saved data">Load data
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </label>
+    <button class="btn btn-primary" id="pdfBtn" onclick="downloadPDF()">Download PDF</button>
+  </div>
+</div>
+
+<div class="stage">
+  <!-- ============ FORM ============ -->
+  <div class="form" id="form"></div>
+
+  <!-- ============ PREVIEW ============ -->
+  <div class="preview" id="previewWrap">
+    <div class="sheet-wrap" id="sheetWrap">
+      <div id="resume"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ----------------------------------------------------------
+   STATE  (pre-filled for a senior FE/Fullstack React/TS dev)
+---------------------------------------------------------- */
+const state = {
+  accent:'#0e7c66',
+  lang:'en',
+  photo:null,
+  name:'Thomas D.',
+  role:'Senior Frontend / Fullstack Developer',
+  tagline:'React · TypeScript · Node.js',
+  email:'thomas@example.com',
+  phone:'+33 6 00 00 00 00',
+  location:'France',
+  links:[
+    {label:'GitHub', url:'github.com/yourhandle'},
+    {label:'LinkedIn', url:'linkedin.com/in/thomas-d-000606137'},
+    {label:'Portfolio', url:'yoursite.dev'}
+  ],
+  summary:'Senior frontend & fullstack developer with deep expertise in building performant, accessible web applications in React and TypeScript. Comfortable across the stack — from polished component architectures and design systems to Node.js APIs and infrastructure. I care about clean abstractions, fast iteration, and shipping products people enjoy using.',
+  skills:[
+    {cat:'Frontend', items:'React, TypeScript, Next.js, Tailwind CSS, Zustand, React Query, Vite'},
+    {cat:'Backend', items:'Node.js, Express, REST, GraphQL, PostgreSQL, Rust'},
+    {cat:'Tooling & DevOps', items:'Git, Docker, CI/CD, Vitest, Playwright, Cursor'}
+  ],
+  languages:[
+    {name:'French', level:'Native'},
+    {name:'English', level:'Professional (C1)'}
+  ],
+  experience:[
+    {role:'Senior Fullstack Developer', company:'Prolong', loc:'France', start:'2023', end:'Present',
+     bullets:'Lead frontend architecture for the core product using React + TypeScript.\nDesign and ship reusable component systems adopted across multiple squads.\nBuild and integrate backend services and third-party APIs end to end.'},
+    {role:'Software Engineer', company:'Sopra Banking Software', loc:'France', start:'2020', end:'2023',
+     bullets:'Developed banking platform features used by enterprise clients.\nImproved performance and maintainability of large TypeScript codebases.\nCollaborated cross-functionally on API design and system integration.'}
+  ],
+  projects:[
+    {name:'Memento Studio', link:'mementostudio.app', desc:'A modern database explorer for PostgreSQL & SQLite with history-revert and AI tooling integration.', tech:'Tauri · Rust · React · TypeScript'}
+  ],
+  education:[
+    {degree:'M.Sc. Computer Science', school:'Your University', year:'2020', note:''}
+  ]
+};
+
+const LABELS = {
+  en:{profile:'Profile', experience:'Experience', projects:'Projects', skills:'Skills', education:'Education', languages:'Languages', contact:'Contact', present:'Present'},
+  fr:{profile:'Profil', experience:'Expérience', projects:'Projets', skills:'Compétences', education:'Formation', languages:'Langues', contact:'Contact', present:'Actuel'}
+};
+
+const ACCENTS = ['#0e7c66','#1f4eb0','#9b2c4d','#1f6f8b','#b45309','#4b3b8f','#1f2937'];
+
+/* ----------------------------------------------------------
+   FORM BUILDER
+---------------------------------------------------------- */
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function buildForm(){
+  const f = document.getElementById('form');
+  f.innerHTML = `
+  <div class="group">
+    <h3>Identity</h3>
+    <div class="photo-up">
+      ${state.photo
+        ? `<img src="${state.photo}" class="photo-prev">`
+        : `<div class="photo-prev empty">no<br>photo</div>`}
+      <div>
+        <label class="file-lab"><span class="pick">Upload photo</span>
+          <input type="file" id="photoInput" accept="image/*">
+        </label>
+        ${state.photo?`<button class="clearphoto" onclick="clearPhoto()">remove photo</button>`:''}
+      </div>
+    </div>
+    <label class="fld"><span class="lab">Full name</span><input type="text" data-k="name" value="${esc(state.name)}"></label>
+    <label class="fld"><span class="lab">Job title</span><input type="text" data-k="role" value="${esc(state.role)}"></label>
+    <label class="fld"><span class="lab">Tagline / stack line</span><input type="text" data-k="tagline" value="${esc(state.tagline)}"></label>
+  </div>
+
+  <div class="group">
+    <h3>Contact</h3>
+    <div class="row2">
+      <label class="fld"><span class="lab">Email</span><input type="email" data-k="email" value="${esc(state.email)}"></label>
+      <label class="fld"><span class="lab">Phone</span><input type="text" data-k="phone" value="${esc(state.phone)}"></label>
+    </div>
+    <label class="fld"><span class="lab">Location</span><input type="text" data-k="location" value="${esc(state.location)}"></label>
+    <div id="linksBox"></div>
+    <button class="addbtn" onclick="addItem('links')">+ Add link</button>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].profile}</h3>
+    <label class="fld"><textarea data-k="summary" rows="5">${esc(state.summary)}</textarea></label>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].skills}</h3>
+    <div id="skillsBox"></div>
+    <button class="addbtn" onclick="addItem('skills')">+ Add skill category</button>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].experience}</h3>
+    <div id="expBox"></div>
+    <button class="addbtn" onclick="addItem('experience')">+ Add experience</button>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].projects}</h3>
+    <div id="projBox"></div>
+    <button class="addbtn" onclick="addItem('projects')">+ Add project</button>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].education}</h3>
+    <div id="eduBox"></div>
+    <button class="addbtn" onclick="addItem('education')">+ Add education</button>
+  </div>
+
+  <div class="group">
+    <h3>${LABELS[state.lang].languages}</h3>
+    <div id="langBox"></div>
+    <button class="addbtn" onclick="addItem('languages')">+ Add language</button>
+  </div>`;
+
+  // links
+  document.getElementById('linksBox').innerHTML = state.links.map((l,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('links',${i})">×</button>
+      <div class="row2">
+        <label class="fld"><span class="lab">Label</span><input type="text" data-arr="links" data-i="${i}" data-f="label" value="${esc(l.label)}"></label>
+        <label class="fld"><span class="lab">URL / handle</span><input type="text" data-arr="links" data-i="${i}" data-f="url" value="${esc(l.url)}"></label>
+      </div>
+    </div>`).join('');
+
+  // skills
+  document.getElementById('skillsBox').innerHTML = state.skills.map((s,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('skills',${i})">×</button>
+      <label class="fld"><span class="lab">Category</span><input type="text" data-arr="skills" data-i="${i}" data-f="cat" value="${esc(s.cat)}"></label>
+      <label class="fld"><span class="lab">Skills (comma separated)</span><input type="text" data-arr="skills" data-i="${i}" data-f="items" value="${esc(s.items)}"></label>
+    </div>`).join('');
+
+  // experience
+  document.getElementById('expBox').innerHTML = state.experience.map((e,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('experience',${i})">×</button>
+      <div class="row2">
+        <label class="fld"><span class="lab">Role</span><input type="text" data-arr="experience" data-i="${i}" data-f="role" value="${esc(e.role)}"></label>
+        <label class="fld"><span class="lab">Company</span><input type="text" data-arr="experience" data-i="${i}" data-f="company" value="${esc(e.company)}"></label>
+      </div>
+      <div class="row3">
+        <label class="fld"><span class="lab">Location</span><input type="text" data-arr="experience" data-i="${i}" data-f="loc" value="${esc(e.loc)}"></label>
+        <label class="fld"><span class="lab">Start</span><input type="text" data-arr="experience" data-i="${i}" data-f="start" value="${esc(e.start)}"></label>
+        <label class="fld"><span class="lab">End</span><input type="text" data-arr="experience" data-i="${i}" data-f="end" value="${esc(e.end)}"></label>
+      </div>
+      <label class="fld"><span class="lab">Bullets (one per line)</span><textarea data-arr="experience" data-i="${i}" data-f="bullets" rows="3">${esc(e.bullets)}</textarea></label>
+    </div>`).join('');
+
+  // projects
+  document.getElementById('projBox').innerHTML = state.projects.map((p,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('projects',${i})">×</button>
+      <div class="row2">
+        <label class="fld"><span class="lab">Name</span><input type="text" data-arr="projects" data-i="${i}" data-f="name" value="${esc(p.name)}"></label>
+        <label class="fld"><span class="lab">Link</span><input type="text" data-arr="projects" data-i="${i}" data-f="link" value="${esc(p.link)}"></label>
+      </div>
+      <label class="fld"><span class="lab">Description</span><textarea data-arr="projects" data-i="${i}" data-f="desc" rows="2">${esc(p.desc)}</textarea></label>
+      <label class="fld"><span class="lab">Tech</span><input type="text" data-arr="projects" data-i="${i}" data-f="tech" value="${esc(p.tech)}"></label>
+    </div>`).join('');
+
+  // education
+  document.getElementById('eduBox').innerHTML = state.education.map((e,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('education',${i})">×</button>
+      <label class="fld"><span class="lab">Degree</span><input type="text" data-arr="education" data-i="${i}" data-f="degree" value="${esc(e.degree)}"></label>
+      <div class="row2">
+        <label class="fld"><span class="lab">School</span><input type="text" data-arr="education" data-i="${i}" data-f="school" value="${esc(e.school)}"></label>
+        <label class="fld"><span class="lab">Year</span><input type="text" data-arr="education" data-i="${i}" data-f="year" value="${esc(e.year)}"></label>
+      </div>
+      <label class="fld"><span class="lab">Note (optional)</span><input type="text" data-arr="education" data-i="${i}" data-f="note" value="${esc(e.note)}"></label>
+    </div>`).join('');
+
+  // languages
+  document.getElementById('langBox').innerHTML = state.languages.map((l,i)=>`
+    <div class="card">
+      <button class="del" onclick="delItem('languages',${i})">×</button>
+      <div class="row2">
+        <label class="fld"><span class="lab">Language</span><input type="text" data-arr="languages" data-i="${i}" data-f="name" value="${esc(l.name)}"></label>
+        <label class="fld"><span class="lab">Level</span><input type="text" data-arr="languages" data-i="${i}" data-f="level" value="${esc(l.level)}"></label>
+      </div>
+    </div>`).join('');
+
+  bindInputs();
+  document.getElementById('photoInput').addEventListener('change', onPhoto);
+}
+
+function bindInputs(){
+  document.querySelectorAll('#form input,#form textarea').forEach(el=>{
+    if(el.type==='file') return;
+    el.addEventListener('input', ()=>{
+      if(el.dataset.k){ state[el.dataset.k]=el.value; }
+      else if(el.dataset.arr){ state[el.dataset.arr][+el.dataset.i][el.dataset.f]=el.value; }
+      render();
+    });
+  });
+}
+
+/* ---------- array helpers ---------- */
+const TEMPLATES = {
+  links:{label:'Link', url:''},
+  skills:{cat:'New category', items:''},
+  experience:{role:'Role', company:'Company', loc:'', start:'', end:'', bullets:'Describe an achievement here.'},
+  projects:{name:'Project name', link:'', desc:'', tech:''},
+  education:{degree:'Degree', school:'', year:'', note:''},
+  languages:{name:'Language', level:''}
+};
+function addItem(k){ state[k].push(JSON.parse(JSON.stringify(TEMPLATES[k]))); buildForm(); render(); }
+function delItem(k,i){ state[k].splice(i,1); buildForm(); render(); }
+
+/* ---------- photo ---------- */
+function onPhoto(e){
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{ state.photo=ev.target.result; buildForm(); render(); };
+  reader.readAsDataURL(file);
+}
+function clearPhoto(){ state.photo=null; buildForm(); render(); }
+
+/* ----------------------------------------------------------
+   RENDER PREVIEW
+---------------------------------------------------------- */
+const ICON={email:'@',phone:'T',loc:'•'};
+function render(){
+  const L=LABELS[state.lang];
+  const initials=(state.name||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+  const photoHTML = state.photo
+    ? `<img src="${state.photo}" class="r-photo">`
+    : `<div class="r-photo empty">${esc(initials)}</div>`;
+
+  const contactHTML = `
+    ${state.email?`<div class="contact-li"><b>@</b><span>${esc(state.email)}</span></div>`:''}
+    ${state.phone?`<div class="contact-li"><b>☏</b><span>${esc(state.phone)}</span></div>`:''}
+    ${state.location?`<div class="contact-li"><b><svg xmlns="http://www.w3.org/2000/svg" width="11" height="15" viewBox="0 0 11 15" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-top:-1px"><path d="M5.5 0C2.46 0 0 2.46 0 5.5c0 3.87 5.5 9.5 5.5 9.5S11 9.37 11 5.5C11 2.46 8.54 0 5.5 0zm0 7.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg></b><span>${esc(state.location)}</span></div>`:''}
+    ${state.links.filter(l=>l.url).map(l=>`<div class="contact-li"><b>↗</b><span><b style="color:inherit;font-weight:700;width:auto">${esc(l.label)}:</b> ${esc(l.url)}</span></div>`).join('')}
+  `;
+
+  const skillsHTML = state.skills.filter(s=>s.cat||s.items).map(s=>`
+    <div class="skillcat">
+      <div class="cn">${esc(s.cat)}</div>
+      <div class="tags">${s.items.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+    </div>`).join('');
+
+  const langHTML = state.languages.filter(l=>l.name).map(l=>`
+    <div class="lang-li"><span>${esc(l.name)}</span><span>${esc(l.level)}</span></div>`).join('');
+
+  const eduSideHTML = state.education.filter(e=>e.degree).map(e=>`
+    <div class="edu">
+      <div class="edu-d" style="font-size:11.5px">${esc(e.degree)}</div>
+      <div class="edu-s">${esc(e.school)}</div>
+      <div class="edu-y">${esc(e.year)}${e.note?' · '+esc(e.note):''}</div>
+    </div>`).join('');
+
+  const expHTML = state.experience.map(e=>{
+    const end = (e.end||'').toLowerCase()==='present' ? L.present : e.end;
+    const bullets=(e.bullets||'').split('\n').map(b=>b.trim()).filter(Boolean);
+    return `<div class="exp">
+      <div class="exp-head">
+        <div class="exp-role">${esc(e.role)}</div>
+        <div class="exp-date">${esc(e.start)}${e.start&&end?' — ':''}${esc(end)}</div>
+      </div>
+      <div class="exp-co">${esc(e.company)}${e.loc?` <span class="loc">· ${esc(e.loc)}</span>`:''}</div>
+      ${bullets.length?`<ul class="bullets">${bullets.map(b=>`<li>${esc(b)}</li>`).join('')}</ul>`:''}
+    </div>`;
+  }).join('');
+
+  const projHTML = state.projects.filter(p=>p.name).map(p=>`
+    <div class="proj">
+      <div class="proj-h"><span class="proj-n">${esc(p.name)}</span>${p.link?`<span class="proj-link">${esc(p.link)}</span>`:''}</div>
+      ${p.desc?`<div class="proj-d">${esc(p.desc)}</div>`:''}
+      ${p.tech?`<div class="proj-tech">${esc(p.tech)}</div>`:''}
+    </div>`).join('');
+
+  document.getElementById('resume').innerHTML = `
+    <div class="side">
+      ${photoHTML}
+      <div class="s-block">
+        <div class="s-title">${L.contact}</div>
+        ${contactHTML}
+      </div>
+      <div class="s-block">
+        <div class="s-title">${L.skills}</div>
+        ${skillsHTML}
+      </div>
+      ${langHTML?`<div class="s-block"><div class="s-title">${L.languages}</div>${langHTML}</div>`:''}
+      ${eduSideHTML?`<div class="s-block"><div class="s-title">${L.education}</div>${eduSideHTML}</div>`:''}
+    </div>
+    <div class="main">
+      <h1 class="name">${esc(state.name)}</h1>
+      <div class="role">${esc(state.role)}</div>
+      <div class="role-meta">${esc(state.tagline)}</div>
+      ${state.summary?`<div class="s-block"><div class="s-title">${L.profile}</div><p class="summary">${esc(state.summary)}</p></div>`:''}
+      <div class="s-block"><div class="s-title">${L.experience}</div>${expHTML}</div>
+      ${projHTML?`<div class="s-block"><div class="s-title">${L.projects}</div>${projHTML}</div>`:''}
+    </div>`;
+}
+
+/* ----------------------------------------------------------
+   ACCENT + LANG controls
+---------------------------------------------------------- */
+function hexToRgba(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function setAccent(c){
+  state.accent=c;
+  const R=document.documentElement;
+  R.style.setProperty('--accent',c);
+  R.style.setProperty('--accent-alpha', hexToRgba(c,.16));
+  R.style.setProperty('--accent-subtle', hexToRgba(c,.07));
+  R.style.setProperty('--accent-fade', hexToRgba(c,.28));
+}
+function buildSwatches(){
+  const box=document.getElementById('swatches');
+  box.innerHTML=ACCENTS.map(c=>`<div class="swatch ${c===state.accent?'active':''}" style="background:${c}" data-c="${c}"></div>`).join('');
+  box.querySelectorAll('.swatch').forEach(s=>s.addEventListener('click',()=>{
+    setAccent(s.dataset.c);
+    buildSwatches();
+  }));
+}
+document.getElementById('langSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  state.lang=b.dataset.lang;
+  document.querySelectorAll('#langSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  buildForm(); render();
+});
+
+/* ----------------------------------------------------------
+   SAVE / LOAD DATA (file-based, storage-free)
+---------------------------------------------------------- */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(state.name||'resume').replace(/\s+/g,'_').toLowerCase()+'_data.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('Data saved to file');
+}
+document.getElementById('importFile').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      Object.assign(state,data);
+      setAccent(state.accent||'#0e7c66');
+      buildSwatches();
+      document.querySelectorAll('#langSeg button').forEach(x=>x.classList.toggle('on',x.dataset.lang===state.lang));
+      buildForm(); render(); toast('Data loaded');
+    }catch(err){ toast('Could not read that file'); }
+  };
+  r.readAsText(file);
+});
+
+/* ----------------------------------------------------------
+   PDF EXPORT
+---------------------------------------------------------- */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+async function downloadPDF(){
+  const btn=document.getElementById('pdfBtn');
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Generating…';
+  try{
+    if(document.fonts&&document.fonts.ready){ await document.fonts.ready; }
+    const node=document.getElementById('resume');
+    const canvas=await html2canvas(node,{
+      scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false,
+      width:node.offsetWidth, height:node.offsetHeight,
+      windowWidth:node.offsetWidth, windowHeight:node.offsetHeight,
+      letterRendering:false,
+    });
+    const img=canvas.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pageW=210, pageH=297;
+    const imgH=canvas.height*pageW/canvas.width;
+    let heightLeft=imgH, position=0;
+    pdf.addImage(img,'PNG',0,position,pageW,imgH,undefined,'FAST');
+    heightLeft-=pageH;
+    while(heightLeft>0){
+      position-=pageH;
+      pdf.addPage();
+      pdf.addImage(img,'PNG',0,position,pageW,imgH,undefined,'FAST');
+      heightLeft-=pageH;
+    }
+    pdf.save((state.name||'resume').replace(/\s+/g,'_').toLowerCase()+'_CV.pdf');
+    toast('PDF downloaded');
+  }catch(err){
+    console.error(err); toast('PDF generation failed — see console');
+  }finally{
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+
+/* ----------------------------------------------------------
+   RESPONSIVE PREVIEW SCALING
+---------------------------------------------------------- */
+function fitPreview(){
+  const wrap=document.getElementById('previewWrap');
+  const sheet=document.getElementById('sheetWrap');
+  const avail=wrap.clientWidth-72;
+  const scale=Math.min(1, avail/794);
+  sheet.style.transform=`scale(${scale})`;
+  sheet.style.marginBottom=`${(scale-1)*1123}px`;
+}
+window.addEventListener('resize',fitPreview);
+
+/* ----------------------------------------------------------
+   PREVIEW TOGGLE
+---------------------------------------------------------- */
+function togglePreview(){
+  const hidden=document.querySelector('.stage').classList.toggle('preview-hidden');
+  document.getElementById('previewToggleLabel').textContent=hidden?'Show preview':'Hide preview';
+  const icon=document.getElementById('previewToggleIcon');
+  if(hidden){
+    icon.innerHTML='<rect x="0" y="0" width="16" height="12" rx="1.5"/>';
+  } else {
+    icon.innerHTML='<rect x="0" y="0" width="6" height="12" rx="1.5" opacity=".55"/><rect x="8" y="0" width="8" height="12" rx="1.5"/>';
+  }
+  if(!hidden) setTimeout(fitPreview,240);
+}
+
+/* ---------- init ---------- */
+setAccent(state.accent);
+buildSwatches();
+buildForm();
+render();
+fitPreview();
+
+/* ---------- dev: reload when this file is saved ---------- */
+(function(){
+  const h=location.hostname;
+  if(h!=='localhost'&&h!=='127.0.0.1'&&h!=='[::1]')return;
+  const file=location.pathname.split('/').pop()||'resume-generator.html';
+  let seen=null;
+  setInterval(async()=>{
+    try{
+      const r=await fetch(file,{method:'HEAD',cache:'no-store'});
+      const tag=r.headers.get('Last-Modified')||r.headers.get('ETag');
+      if(!tag)return;
+      if(seen&&tag!==seen)location.reload();
+      seen=tag;
+    }catch(_){}
+  },800);
+})();
+</script>
+</body>
+</html>

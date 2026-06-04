@@ -263,6 +263,9 @@ const state = {
   ]
 };
 
+const LS_KEY = 'resume-studio';
+function syncLS(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(_){} }
+
 const LABELS = {
   en:{profile:'Profile', experience:'Experience', projects:'Projects', skills:'Skills', education:'Education', languages:'Languages', contact:'Contact', present:'Present'},
   fr:{profile:'Profil', experience:'Expérience', projects:'Projets', skills:'Compétences', education:'Formation', languages:'Langues', contact:'Contact', present:'Actuel'}
@@ -420,7 +423,7 @@ function bindInputs(){
     el.addEventListener('input', ()=>{
       if(el.dataset.k){ state[el.dataset.k]=el.value; }
       else if(el.dataset.arr){ state[el.dataset.arr][+el.dataset.i][el.dataset.f]=el.value; }
-      render();
+      render(); syncLS();
     });
   });
 }
@@ -434,17 +437,17 @@ const TEMPLATES = {
   education:{degree:'Degree', school:'', year:'', note:''},
   languages:{name:'Language', level:''}
 };
-function addItem(k){ state[k].push(JSON.parse(JSON.stringify(TEMPLATES[k]))); buildForm(); render(); }
-function delItem(k,i){ state[k].splice(i,1); buildForm(); render(); }
+function addItem(k){ state[k].push(JSON.parse(JSON.stringify(TEMPLATES[k]))); buildForm(); render(); syncLS(); }
+function delItem(k,i){ state[k].splice(i,1); buildForm(); render(); syncLS(); }
 
 /* ---------- photo ---------- */
 function onPhoto(e){
   const file=e.target.files[0]; if(!file)return;
   const reader=new FileReader();
-  reader.onload=ev=>{ state.photo=ev.target.result; buildForm(); render(); };
+  reader.onload=ev=>{ state.photo=ev.target.result; buildForm(); render(); syncLS(); };
   reader.readAsDataURL(file);
 }
-function clearPhoto(){ state.photo=null; buildForm(); render(); }
+function clearPhoto(){ state.photo=null; buildForm(); render(); syncLS(); }
 
 /* ----------------------------------------------------------
    RENDER PREVIEW
@@ -546,13 +549,14 @@ function buildSwatches(){
   box.querySelectorAll('.swatch').forEach(s=>s.addEventListener('click',()=>{
     setAccent(s.dataset.c);
     buildSwatches();
+    syncLS();
   }));
 }
 document.getElementById('langSeg').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b)return;
   state.lang=b.dataset.lang;
   document.querySelectorAll('#langSeg button').forEach(x=>x.classList.toggle('on',x===b));
-  buildForm(); render();
+  buildForm(); render(); syncLS();
 });
 
 /* ----------------------------------------------------------
@@ -655,8 +659,15 @@ function togglePreview(){
 }
 
 /* ---------- init ---------- */
+(function(){
+  try{
+    const saved=localStorage.getItem(LS_KEY);
+    if(saved){ Object.assign(state,JSON.parse(saved)); }
+  }catch(_){}
+})();
 setAccent(state.accent);
 buildSwatches();
+document.querySelectorAll('#langSeg button').forEach(x=>x.classList.toggle('on',x.dataset.lang===state.lang));
 buildForm();
 render();
 fitPreview();

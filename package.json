@@ -1,0 +1,16 @@
+{
+  "name": "resume-studio",
+  "version": "1.0.0",
+  "description": "Developer CV generator — single-page app with live preview, PDF export, and JSON save/load.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": ["resume", "cv", "generator", "developer"],
+  "author": "",
+  "license": "MIT"
+}

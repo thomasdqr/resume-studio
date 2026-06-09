@@ -23,7 +23,7 @@ A developer-focused CV generator with live preview, accent color theming, EN/FR 
 ### Run locally
 
 ```bash
-git clone https://github.com/thomasdequeiros/resume-studio.git
+git clone https://github.com/thomasdqr/resume-studio.git
 cd resume-studio
 npm start
 ```

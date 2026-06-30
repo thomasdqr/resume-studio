@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "PORT=3123 node server.js",
+    "deploy": "firebase deploy --only hosting"
   },
   "engines": {
     "node": ">=14"

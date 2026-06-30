@@ -88,6 +88,20 @@
     color:var(--accent);margin:0 0 12px;display:flex;align-items:center;gap:9px;
   }
   .group>h3::after{content:"";flex:1;height:1px;background:var(--line);}
+  .group>h3 .grp-t{flex:none;}
+  .group>h3 .edit-title{
+    flex:none;background:none;border:0;margin:0;padding:3px;line-height:0;cursor:pointer;
+    color:var(--muted);display:inline-flex;align-items:center;justify-content:center;border-radius:6px;
+    opacity:.45;transition:opacity .15s, color .15s, background .15s;align-self:center;
+  }
+  .group>h3:hover .edit-title{opacity:1;}
+  .group>h3 .edit-title:hover{color:var(--accent);background:var(--accent-subtle);}
+  .group>h3 .title-edit{
+    flex:none;width:auto;max-width:240px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:inherit;
+    color:var(--accent);background:#fff;border:1px solid var(--accent);border-radius:7px;padding:4px 8px;
+  }
+  .group>h3 .title-edit:focus{outline:0;box-shadow:0 0 0 3px var(--accent-alpha);}
   label.fld{display:block;margin-bottom:11px;}
   label.fld .lab{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px;letter-spacing:.01em;}
   input[type=text],input[type=email],textarea,select{
@@ -101,8 +115,8 @@
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .hint{font-size:11px;color:var(--muted);margin:-4px 0 10px;}
   .card{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:11px;background:#fcfcfb;position:relative;}
-  .card .del{position:absolute;top:9px;right:9px;border:0;background:#fff;border:1px solid var(--line);width:26px;height:26px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;}
-  .card .del:hover{color:#c0392b;border-color:#f0c9c4;}
+  .card .del{position:absolute;top:-9px;right:-9px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);width:24px;height:24px;padding:0;border-radius:50%;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:color .15s, border-color .15s, background .15s;z-index:2;}
+  .card .del:hover{color:#c0392b;border-color:#f0c9c4;background:#fff5f3;}
   .addbtn{width:100%;border:1px dashed #c4cecb;background:#fff;border-radius:10px;padding:9px;color:var(--accent);font-family:var(--sans);font-weight:600;font-size:12.5px;cursor:pointer;}
   .addbtn:hover{background:var(--accent-subtle);}
 
@@ -227,6 +241,7 @@
 const state = {
   accent:'#0e7c66',
   lang:'en',
+  titles:{en:{},fr:{}},
   photo:null,
   name:'Your Name',
   role:'Your Job Title',
@@ -271,6 +286,50 @@ const LABELS = {
   fr:{profile:'Profil', experience:'Expérience', projects:'Projets', skills:'Compétences', education:'Formation', languages:'Langues', contact:'Contact', present:'Actuel'}
 };
 
+/* custom (user-edited) section titles, kept per language; fall back to LABELS */
+function secTitle(key){
+  const t = state.titles && state.titles[state.lang] && state.titles[state.lang][key];
+  return (t!=null && t!=='') ? t : LABELS[state.lang][key];
+}
+
+/* renders an editable group heading with a pencil button */
+function grpH(key){
+  return `<h3 class="grp-h"><span class="grp-t">${esc(secTitle(key))}</span>`
+    + `<button class="edit-title" type="button" title="Edit title" aria-label="Edit title" onclick="editTitle('${key}',this)">`
+    + `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 2.6l2.8 2.8M11.8 1.4a1.4 1.4 0 0 1 2 2L4.7 12.5l-3 .8.8-3 9.3-8.9z"/></svg>`
+    + `</button></h3>`;
+}
+
+/* turn a group heading into an inline editor; saves per current language */
+function editTitle(key, btn){
+  const h3 = btn.closest('h3');
+  const span = h3.querySelector('.grp-t');
+  if(!span) return;
+  const inp = document.createElement('input');
+  inp.type='text'; inp.className='title-edit'; inp.value=span.textContent;
+  btn.style.display='none';
+  span.replaceWith(inp);
+  inp.focus(); inp.select();
+  let done=false;
+  const commit=(save)=>{
+    if(done) return; done=true;
+    if(save){
+      const v=inp.value.trim();
+      if(!state.titles) state.titles={en:{},fr:{}};
+      if(!state.titles[state.lang]) state.titles[state.lang]={};
+      if(v==='' || v===LABELS[state.lang][key]) delete state.titles[state.lang][key];
+      else state.titles[state.lang][key]=v;
+      syncLS();
+    }
+    buildForm(); render();
+  };
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); commit(true); }
+    else if(e.key==='Escape'){ e.preventDefault(); commit(false); }
+  });
+  inp.addEventListener('blur',()=>commit(true));
+}
+
 const ACCENTS = ['#0e7c66','#1f4eb0','#9b2c4d','#1f6f8b','#b45309','#4b3b8f','#1f2937'];
 
 /* ----------------------------------------------------------
@@ -300,7 +359,7 @@ function buildForm(){
   </div>
 
   <div class="group">
-    <h3>Contact</h3>
+    ${grpH('contact')}
     <div class="row2">
       <label class="fld"><span class="lab">Email</span><input type="email" data-k="email" value="${esc(state.email)}"></label>
       <label class="fld"><span class="lab">Phone</span><input type="text" data-k="phone" value="${esc(state.phone)}"></label>
@@ -311,36 +370,36 @@ function buildForm(){
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].profile}</h3>
+    ${grpH('profile')}
     <label class="fld"><textarea data-k="summary" rows="5">${esc(state.summary)}</textarea></label>
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].skills}</h3>
+    ${grpH('skills')}
     <div id="skillsBox"></div>
     <button class="addbtn" onclick="addItem('skills')">+ Add skill category</button>
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].experience}</h3>
+    ${grpH('experience')}
     <div id="expBox"></div>
     <button class="addbtn" onclick="addItem('experience')">+ Add experience</button>
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].projects}</h3>
+    ${grpH('projects')}
     <div id="projBox"></div>
     <button class="addbtn" onclick="addItem('projects')">+ Add project</button>
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].education}</h3>
+    ${grpH('education')}
     <div id="eduBox"></div>
     <button class="addbtn" onclick="addItem('education')">+ Add education</button>
   </div>
 
   <div class="group">
-    <h3>${LABELS[state.lang].languages}</h3>
+    ${grpH('languages')}
     <div id="langBox"></div>
     <button class="addbtn" onclick="addItem('languages')">+ Add language</button>
   </div>`;
@@ -508,23 +567,23 @@ function render(){
     <div class="side">
       ${photoHTML}
       <div class="s-block">
-        <div class="s-title">${L.contact}</div>
+        <div class="s-title">${esc(secTitle('contact'))}</div>
         ${contactHTML}
       </div>
       <div class="s-block">
-        <div class="s-title">${L.skills}</div>
+        <div class="s-title">${esc(secTitle('skills'))}</div>
         ${skillsHTML}
       </div>
-      ${langHTML?`<div class="s-block"><div class="s-title">${L.languages}</div>${langHTML}</div>`:''}
-      ${eduSideHTML?`<div class="s-block"><div class="s-title">${L.education}</div>${eduSideHTML}</div>`:''}
+      ${langHTML?`<div class="s-block"><div class="s-title">${esc(secTitle('languages'))}</div>${langHTML}</div>`:''}
+      ${eduSideHTML?`<div class="s-block"><div class="s-title">${esc(secTitle('education'))}</div>${eduSideHTML}</div>`:''}
     </div>
     <div class="main">
       <h1 class="name">${esc(state.name)}</h1>
       <div class="role">${esc(state.role)}</div>
       <div class="role-meta">${esc(state.tagline)}</div>
-      ${state.summary?`<div class="s-block"><div class="s-title">${L.profile}</div><p class="summary">${esc(state.summary)}</p></div>`:''}
-      <div class="s-block"><div class="s-title">${L.experience}</div>${expHTML}</div>
-      ${projHTML?`<div class="s-block"><div class="s-title">${L.projects}</div>${projHTML}</div>`:''}
+      ${state.summary?`<div class="s-block"><div class="s-title">${esc(secTitle('profile'))}</div><p class="summary">${esc(state.summary)}</p></div>`:''}
+      <div class="s-block"><div class="s-title">${esc(secTitle('experience'))}</div>${expHTML}</div>
+      ${projHTML?`<div class="s-block"><div class="s-title">${esc(secTitle('projects'))}</div>${projHTML}</div>`:''}
     </div>`;
 }
 
